@@ -1,6 +1,6 @@
-use std::fs::{self, DirBuilder};
+use std::fs::{self};
 use clap::Parser;
-use textwrap::{termwidth, fill};
+use textwrap::termwidth;
 
 #[derive(Parser)]
 struct Cli {
