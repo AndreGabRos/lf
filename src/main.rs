@@ -1,4 +1,4 @@
-use std::fs::{self};
+use std::{fs::{self, Metadata}, os::unix::prelude::PermissionsExt};
 use clap::Parser;
 use textwrap::termwidth;
 
@@ -6,6 +6,8 @@ use textwrap::termwidth;
 struct Cli {
     #[arg(short, long)]
     all: bool, // show all files
+    #[arg(short, long)]
+    long: bool,
 
     #[clap(default_value = ".")]
     path: String,
@@ -13,8 +15,12 @@ struct Cli {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli_args = Cli::parse();
+    if cli_args.long {
+        list_file_with_metadata(&cli_args.path, cli_args.all)?;
 
-    list_files(&cli_args.path, cli_args.all)?;
+    } else {
+        list_files(&cli_args.path, cli_args.all)?;
+    }
 
     Ok(())
 }
@@ -60,4 +66,63 @@ fn print_file(file_name: &str, is_dir: bool, mut line_length: usize, terminal_wi
     line_length += name_length;
 
     line_length
+}
+
+fn get_file_mode(metadata: &Metadata) -> u32 {
+    let permissions = metadata.permissions();
+    permissions.mode()
+    
+}
+
+fn turn_mode_into_readable_perm(mode: u32) -> String {
+    let perm = format!("{:b}", mode);
+    let len = perm.len();
+    let p = &perm[len-9..];
+    let perm_chars = p.chars();
+    let mut readable_perm = String::new();
+    let mut count = 1;
+
+    if len == 16 {
+        readable_perm.push('.');
+    } else {
+        readable_perm.push('d');
+    }
+
+    for i in perm_chars {
+        if i == '1' {
+            if count % 3 == 0 {
+                readable_perm.push('x');
+            } else if count % 2 == 0 {
+                readable_perm.push('w');
+            } else {
+                readable_perm.push('r');
+            }
+        }
+        else {
+            readable_perm.push('-');
+        }
+        count += 1;
+    }
+
+    readable_perm
+}
+
+fn print_file_with_metadata(file_name: &str, perm: &str) {
+    println!("{} {}", perm, file_name);
+}
+
+fn list_file_with_metadata(path: &str, show_all: bool) -> Result<(), Box<dyn std::error::Error>> {
+    for entry in fs::read_dir(path)? {
+        let dir_file = entry?;
+        let data = dir_file.metadata()?;
+        let mode = get_file_mode(&data);
+        let perm_read = turn_mode_into_readable_perm(mode);
+        if let Ok(name) = dir_file.file_name().into_string() {
+            if !name.starts_with('.') || show_all {
+                print_file_with_metadata(&name, &perm_read);
+            }
+        }
+    }
+
+    Ok(())
 }
