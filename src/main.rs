@@ -75,40 +75,36 @@ fn get_file_mode(metadata: &Metadata) -> u32 {
 }
 
 fn turn_mode_into_readable_perm(mode: u32) -> String {
-    let perm = format!("{:b}", mode);
-    let len = perm.len();
-    let p = &perm[len-9..];
+    let perm_bin = format!("{:b}", mode);
+    let len = perm_bin.len();
+    let p = &perm_bin[len-9..];
     let perm_chars = p.chars();
-    let mut readable_perm = String::new();
+    let mut perm = String::new();
     let mut count = 1;
 
     if len == 16 {
-        readable_perm.push('.');
+        perm.push('.');
     } else {
-        readable_perm.push('d');
+        perm.push('d');
     }
 
     for i in perm_chars {
         if i == '1' {
             if count % 3 == 0 {
-                readable_perm.push('x');
+                perm.push('x');
             } else if count % 2 == 0 {
-                readable_perm.push('w');
+                perm.push('w');
             } else {
-                readable_perm.push('r');
+                perm.push('r');
             }
         }
         else {
-            readable_perm.push('-');
+            perm.push('-');
         }
         count += 1;
     }
 
-    readable_perm
-}
-
-fn print_file_with_metadata(file_name: &str, perm: &str) {
-    println!("{} {}", perm, file_name);
+    perm
 }
 
 fn list_file_with_metadata(path: &str, show_all: bool) -> Result<(), Box<dyn std::error::Error>> {
@@ -116,10 +112,10 @@ fn list_file_with_metadata(path: &str, show_all: bool) -> Result<(), Box<dyn std
         let dir_file = entry?;
         let data = dir_file.metadata()?;
         let mode = get_file_mode(&data);
-        let perm_read = turn_mode_into_readable_perm(mode);
+        let perm = turn_mode_into_readable_perm(mode);
         if let Ok(name) = dir_file.file_name().into_string() {
             if !name.starts_with('.') || show_all {
-                print_file_with_metadata(&name, &perm_read);
+                println!("{} {}", perm, name);
             }
         }
     }
