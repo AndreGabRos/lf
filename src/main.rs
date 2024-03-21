@@ -3,6 +3,7 @@ use clap::Parser;
 use textwrap::termwidth;
 use users::get_user_by_uid;
 use chrono::{Local, TimeZone};
+use ansiterm::Color::*;
 
 #[macro_use] extern crate prettytable;
 use prettytable::{Table, Row, Cell, format::{self, TableFormat}};
@@ -55,13 +56,17 @@ fn list_files(dir: &str, show_all: bool) -> Result<(), Box<dyn std::error::Error
         let data = dir_file.metadata()?;
 
         if let Ok(mut name) = dir_file.file_name().into_string() {
+            let name_len = name.len();
             if !name.starts_with('.') || show_all {
                 if data.is_dir() {
                     name.push('/');
+                    name = Blue.paint(name).to_string();
+                } else {
+                    name = set_print_color_by_ext_perm(name, data.mode());
                 }                
 
-                if name.len() > maior_len {
-                    maior_len = name.len();
+                if name_len > maior_len {
+                    maior_len = name_len;
                 }
 
                 name_files.push(name);
@@ -118,12 +123,12 @@ fn turn_mode_into_readable_perm(mode: u32) -> String {
 
     for i in perm_chars {
         if i == '1' {
-            if count % 3 == 0 {
-                perm.push('x');
-            } else if count % 2 == 0 {
-                perm.push('w');
-            } else {
+            if count == 1 || count == 4 || count == 7 {
                 perm.push('r');
+            } else if count == 2 || count == 5 || count == 8 {
+                perm.push('w');
+            } else if count == 3 || count == 6 || count == 9{
+                perm.push('x');
             }
         }
         else {
@@ -193,4 +198,29 @@ fn list_file_with_metadata(path: &str, show_all: bool) -> Result<(), Box<dyn std
     table.printstd();
 
     Ok(())
+}
+
+
+fn set_print_color_by_ext_perm(file_name: String, file_mode: u32) -> String {
+    let ext = file_name.split('.').last().unwrap().to_string();
+
+    let bin_mode = format!("{:b}", file_mode);
+    let a = bin_mode.chars().nth(9).unwrap();
+
+    let purple_ext = ["gz", "tar", "zip", "rar", "tgz", "zst"];
+    let red_ext = ["rs", "py", "c", "cpp", "js", "ts", "toml", "yml", "json"];
+    let yellow_ext = ["pdf", "pptx", "word"];
+    let green_ext = ["sh"];
+
+    if purple_ext.contains(&ext.as_str()) {
+        return BrightPurple.paint(file_name).to_string();
+    } else if red_ext.contains(&ext.as_str()) {
+        return  Red.paint(file_name).to_string();
+    } else if yellow_ext.contains(&ext.as_str()) {
+        return Yellow.paint(file_name).to_string();
+    } else if green_ext.contains(&ext.as_str()) && a == '1' {
+        return Green.paint(file_name).to_string();
+    } 
+
+    file_name
 }
