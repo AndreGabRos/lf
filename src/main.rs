@@ -1,7 +1,8 @@
-use std::{fs::{self, Metadata}, os::unix::prelude::{PermissionsExt, MetadataExt}, ops::AddAssign};
+use std::{fs::{self, Metadata}, os::unix::prelude::{PermissionsExt, MetadataExt}};
 use clap::Parser;
 use textwrap::termwidth;
 use users::get_user_by_uid;
+use chrono::{Local, TimeZone};
 
 #[macro_use] extern crate prettytable;
 use prettytable::{Table, Row, Cell, format::{self, TableFormat}};
@@ -36,6 +37,13 @@ fn get_table_format() -> TableFormat {
         .build()
 }
 
+fn get_table_format_for_long() -> TableFormat {
+    format::FormatBuilder::new()
+        .column_separator(' ')
+        .borders(' ')
+        .build()
+}
+
 fn list_files(dir: &str, show_all: bool) -> Result<(), Box<dyn std::error::Error>> {
     let terminal_width = termwidth();
 
@@ -60,8 +68,9 @@ fn list_files(dir: &str, show_all: bool) -> Result<(), Box<dyn std::error::Error
             }
         }
     }
+
     let collums = terminal_width / (maior_len + 7);
-    println!("{collums}");
+
     if collums == 0 {
         for name in name_files {
             println!("{name}");
@@ -84,9 +93,7 @@ fn print_files_in_table(files_name: Vec<String>, collums: usize) {
         }
         table.add_row(Row::new(cells));
     }
-    let table_text = table.to_string();
-
-    println!("{}", table_text);
+    table.printstd();
 }
 
 fn get_file_mode(metadata: &Metadata) -> u32 {
@@ -130,6 +137,9 @@ fn turn_mode_into_readable_perm(mode: u32) -> String {
 
 
 fn list_file_with_metadata(path: &str, show_all: bool) -> Result<(), Box<dyn std::error::Error>> {
+    let mut table = Table::new();
+    table.set_format(get_table_format_for_long());
+
     for entry in fs::read_dir(path)? {
         let dir_file = entry?;
 
@@ -143,12 +153,44 @@ fn list_file_with_metadata(path: &str, show_all: bool) -> Result<(), Box<dyn std
         let user = get_user_by_uid(user_uid).unwrap();
         let user_name = user.name().to_str().unwrap();
 
+        let last_modification_date = data.mtime();
+        let date = Local.timestamp_opt(last_modification_date, 0);
+        let date = date.unwrap();
+        let date = date.format("%d/%m %H:%M");
+
+
+        let mut size = 0;
+        let mut sufixo: char = ' ';
+
+        if !data.is_dir() {
+            size = data.size();
+            if size > 1000 {
+                size /= 1000;
+                sufixo = 'K';
+            }
+            if size > 1000 {
+                size /= 1000;
+                sufixo = 'M';
+            }
+            if size > 1000 {
+                size /= 1000;
+                sufixo = 'G';
+            }
+        }
+
+
         if let Ok(file_name) = dir_file.file_name().into_string() {
             if !file_name.starts_with('.') || show_all {
-                println!("{} {} {}", perm, user_name, file_name);
+                if !data.is_dir() {
+                    table.add_row(row![perm, user_name, format!("{size}{sufixo}"), date, file_name]);
+                } else {
+                    table.add_row(row![perm, user_name, "-", date, file_name]);
+                }
             }
         }
     }
+
+    table.printstd();
 
     Ok(())
 }
