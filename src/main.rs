@@ -118,17 +118,17 @@ fn turn_mode_into_readable_perm(mode: u32) -> String {
     if len == 16 {
         perm.push('.');
     } else {
-        perm.push('d');
+        perm.push_str(&Blue.paint("d").to_string());
     }
 
     for i in perm_chars {
         if i == '1' {
             if count == 1 || count == 4 || count == 7 {
-                perm.push('r');
+                perm.push_str(&Green.paint("r").to_string());
             } else if count == 2 || count == 5 || count == 8 {
-                perm.push('w');
+                perm.push_str(&Red.paint("w").to_string());
             } else if count == 3 || count == 6 || count == 9{
-                perm.push('x');
+                perm.push_str(&Yellow.paint("x").to_string());
             }
         }
         else {
