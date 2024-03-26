@@ -15,34 +15,60 @@ struct Cli {
     #[arg(short, long)]
     long: bool,
 
+
     #[clap(default_value = ".")]
     path: String,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli_args = Cli::parse();
-    if cli_args.long {
-        list_file_with_metadata(&cli_args.path, cli_args.all)?;
+    // if cli_args.long {
+    //     list_file_with_metadata(&cli_args.path, cli_args.all)?;
 
-    } else {
-        list_files(&cli_args.path, cli_args.all)?;
-    }
+    // } else {
+    //     list_files(&cli_args.path, cli_args.all)?;
+    // }
+    let mut v = Vec::new();
+    v = get_file_names(&cli_args.path, cli_args.all)?;
+    print_names(&mut v);
 
     Ok(())
 }
 
 fn get_table_format() -> TableFormat {
     format::FormatBuilder::new()
-        .column_separator('\t')
+        .column_separator(' ')
         .borders(' ')
         .build()
 }
 
-fn get_table_format_for_long() -> TableFormat {
-    format::FormatBuilder::new()
-        .column_separator(' ')
-        .borders(' ')
-        .build()
+fn get_file_names(dir: &str, show_all: bool) -> Result<Vec<String>, Box<dyn std::error::Error>>{
+    let mut name_files = Vec::new();
+    for entry in fs::read_dir(dir)? {
+        let dir_file = entry?;
+        let data = dir_file.metadata()?;
+
+        if let Ok(mut name) = dir_file.file_name().into_string() {
+            let indice = name_files.iter().position(|x| x >= &name).unwrap_or(name_files.len());
+
+            if !name.starts_with('.') || show_all {
+                if data.is_dir() {
+                    name.push('/');
+                }
+
+                name_files.insert(indice, name);
+            }
+        }
+    }
+
+    Ok(name_files)
+}
+
+fn print_names(files_name: &mut Vec<String>) {
+    set_print_color(files_name);
+    for i in files_name {
+        println!("{}", i);
+    }
 }
 
 fn list_files(dir: &str, show_all: bool) -> Result<(), Box<dyn std::error::Error>> {
@@ -56,25 +82,39 @@ fn list_files(dir: &str, show_all: bool) -> Result<(), Box<dyn std::error::Error
         let data = dir_file.metadata()?;
 
         if let Ok(mut name) = dir_file.file_name().into_string() {
-            let name_len = name.len();
+            let name_len = name.len() + 1;
+
+            if name_len > maior_len {
+                maior_len = name_len;
+            }
+
+            let indice;
+            println!("{name}");
+            if name_files.is_empty() {
+                indice = 1;
+            } else {
+                indice = name_files.iter().position(|x| x >= &name).unwrap_or(name_files.len());
+            }
+            println!("{indice}");
+
+            println!("{:?}", name_files);
+            
+
             if !name.starts_with('.') || show_all {
                 if data.is_dir() {
-                    name.push('/');
+                    name.push_str("/ ");
                     name = Blue.paint(name).to_string();
                 } else {
                     name = set_print_color_by_ext_perm(name, data.mode());
-                }                
-
-                if name_len > maior_len {
-                    maior_len = name_len;
+                    name.push(' ');
                 }
 
-                name_files.push(name);
+                name_files.insert(indice-1, name);
             }
         }
     }
 
-    let collums = terminal_width / (maior_len + 7);
+    let collums = terminal_width / maior_len;
 
     if collums == 0 {
         for name in name_files {
@@ -143,7 +183,7 @@ fn turn_mode_into_readable_perm(mode: u32) -> String {
 
 fn list_file_with_metadata(path: &str, show_all: bool) -> Result<(), Box<dyn std::error::Error>> {
     let mut table = Table::new();
-    table.set_format(get_table_format_for_long());
+    table.set_format(get_table_format());
 
     for entry in fs::read_dir(path)? {
         let dir_file = entry?;
@@ -200,6 +240,21 @@ fn list_file_with_metadata(path: &str, show_all: bool) -> Result<(), Box<dyn std
     Ok(())
 }
 
+fn set_print_color(files_name: &mut Vec<String>) {
+    files_name.iter_mut().for_each(|mut element| {
+        let nome = element.clone();
+        if element.ends_with('/') {
+            element.push(' ');
+            element = &mut Blue.paint(nome).to_string();
+        }
+    })
+    // for mut name in files_name {
+    //     if name.ends_with('/') {
+    //         name.push(' ');
+    //         name = &mut Blue.paint(name.clone()).to_string();
+    //     }
+    // }
+}
 
 fn set_print_color_by_ext_perm(file_name: String, file_mode: u32) -> String {
     let ext = file_name.split('.').last().unwrap().to_string();
@@ -215,7 +270,7 @@ fn set_print_color_by_ext_perm(file_name: String, file_mode: u32) -> String {
     if purple_ext.contains(&ext.as_str()) {
         return BrightPurple.paint(file_name).to_string();
     } else if red_ext.contains(&ext.as_str()) {
-        return  Red.paint(file_name).to_string();
+        return Red.paint(file_name).to_string();
     } else if yellow_ext.contains(&ext.as_str()) {
         return Yellow.paint(file_name).to_string();
     } else if green_ext.contains(&ext.as_str()) && a == '1' {
