@@ -29,16 +29,16 @@ pub fn print_files_in_table(files: &mut Files) {
     table.set_format(get_table_format());
 
     if collums > 0 {
-        for name_chunk in files.files.chunks(collums) {
+        for file_chunk in files.files.chunks(collums) {
             let mut cells: Vec<Cell> = Vec::new();
-            for name in name_chunk {
-                cells.push(Cell::new(&set_print_color(name)));
+            for file in file_chunk {
+                cells.push(Cell::new(&format!("{} ", &set_print_color(file))));
             }
             table.add_row(Row::new(cells));
         } 
     } else {
         for file in &files.files {
-            println!("{}", set_print_color(&file));
+            println!("{}", set_print_color(file));
         }
     }
     table.printstd();
