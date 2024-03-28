@@ -28,7 +28,7 @@ impl File {
     }
 
     pub fn new(name: String, path: String) -> File {
-        let metadata = fs::metadata(&name);
+        let metadata = fs::metadata(format!("{path}{name}"));
 
         let metadata = match metadata {
             Ok(md) => md,
@@ -41,7 +41,7 @@ impl File {
         
 
         File {
-            file_perm: get_perm(&name),
+            file_perm: get_perm(&format!("{path}{name}")),
             name,
             created_at: created_at.into(),
             creator: get_user_by_uid(user_id).unwrap(),
