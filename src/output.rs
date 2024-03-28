@@ -28,13 +28,19 @@ pub fn print_files_in_table(files: &mut Files) {
     let mut table = Table::new();
     table.set_format(get_table_format());
 
-    for name_chunk in files.files.chunks(collums) {
-        let mut cells: Vec<Cell> = Vec::new();
-        for name in name_chunk {
-            cells.push(Cell::new(&set_print_color(name)));
+    if collums > 0 {
+        for name_chunk in files.files.chunks(collums) {
+            let mut cells: Vec<Cell> = Vec::new();
+            for name in name_chunk {
+                cells.push(Cell::new(&set_print_color(name)));
+            }
+            table.add_row(Row::new(cells));
+        } 
+    } else {
+        for file in &files.files {
+            println!("{}", set_print_color(&file));
         }
-        table.add_row(Row::new(cells));
-    } 
+    }
     table.printstd();
 }
 
@@ -54,7 +60,7 @@ fn set_print_color_by_ext_perm(file_name: &str, file_perm: &str) -> String {
     let purple_ext = ["gz", "tar", "zip", "rar", "tgz", "zst"];
     let red_ext = ["rs", "py", "c", "cpp", "js", "ts", "toml", "yml", "json"];
     let yellow_ext = ["pdf", "pptx", "word"];
-    let green_ext = ["sh"];
+    let green_ext = ["sh", "AppImage"];
 
     if purple_ext.contains(&ext.as_str()) {
         return BrightPurple.paint(file_name).to_string();
