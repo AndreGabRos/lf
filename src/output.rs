@@ -114,13 +114,19 @@ pub fn list_files_long(files: &Files) {
 
     for file in &files.files {
         let len_user = file.creator.name().to_str().unwrap().len();
-        let espaco_tam = " ".repeat(4-put_sufix_in_number(file.size).len());
+        let espaco_tam = " ".repeat(4-put_sufix_in_number(file.size.unwrap_or(0)).len());
         let espaco_user = " ".repeat(maior_len_user-len_user);
+
+        let print_size = if let Some(num) = file.size {
+            Green.paint(put_sufix_in_number(num)).to_string()
+        } else {
+                "  ".to_string()
+        };
 
         println!(
             "{:width$} {}{} {} {}{} {}", 
             set_perm_color(file.get_perm()),
-            Green.paint(put_sufix_in_number(file.size)),
+            print_size,
             espaco_tam,
             Purple.paint(&format!("{} ", file.created_at.format("%d/%m/%Y %H:%M"))),
             Yellow.paint(&format!("{} ", file.creator.name().to_str().unwrap())),

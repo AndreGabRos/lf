@@ -10,7 +10,7 @@ pub struct File {
     file_perm: String,
     pub created_at: DateTime<Local>,
     pub creator: User,
-    pub size: u64
+    pub size: Option<u64>
 }
 
 pub struct Files {
@@ -45,7 +45,7 @@ impl File {
             name,
             created_at: created_at.into(),
             creator: get_user_by_uid(user_id).unwrap(),
-            size: metadata.size(), 
+            size: if !metadata.is_dir() { Some(metadata.size()) } else { None }, 
         }
     }
 }
@@ -59,7 +59,7 @@ pub fn get_file_names_in_dir(dir: &str, show_all: bool) ->
         let data = dir_file.metadata()?;
 
         if let Ok(mut name) = dir_file.file_name().into_string() {
-            let indice = files.iter().position(|x| x.name >= name).unwrap_or(0);
+            let indice = files.iter().position(|x| x.name.ge(&name) ).unwrap_or(files.len());
 
             if !name.starts_with('.') || show_all {
                 if data.is_dir() {
