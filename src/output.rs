@@ -23,6 +23,17 @@ fn get_collums(files: &Files) -> usize {
     terminal_width/(maior_len+1)
 }
 
+fn get_maior_len(files: &Files) -> usize {
+    let mut maior_len = 0;
+    for file in &files.files {
+        if file.get_name().len() > maior_len {
+            maior_len = file.get_name().len()
+        }
+    }
+
+    maior_len+1
+}
+
 pub fn print_files_in_table(files: &mut Files) {
     let collums = get_collums(files);
     let mut table = Table::new();
@@ -58,8 +69,8 @@ fn set_print_color_by_ext_perm(file_name: &str, file_perm: &str) -> String {
     let is_exec = file_perm.find('x');
 
     let purple_ext = ["gz", "tar", "zip", "rar", "tgz", "zst"];
-    let red_ext = ["rs", "py", "c", "cpp", "js", "ts", "toml", "yml", "json"];
-    let yellow_ext = ["pdf", "pptx", "word"];
+    let red_ext = ["rs", "py", "c", "cpp", "js", "ts", "toml", "yml", "json", "conf"];
+    let yellow_ext = ["pdf", "pptx", "word", "docx"];
     let green_ext = ["sh", "AppImage"];
 
     if purple_ext.contains(&ext.as_str()) {
@@ -99,17 +110,40 @@ pub fn list_files_long(files: &Files) {
     let mut table = Table::new();
     table.set_format(get_table_format());
 
+    let maior_len_user = get_maior_len_name_user(&files.files);
+
     for file in &files.files {
-        let cells: Vec<Cell> = vec![
-            Cell::new(&set_perm_color(file.get_perm())),
-            Cell::new(&Green.paint(put_sufix_in_number(file.size)).to_string()),
-            Cell::new(&Purple.paint(&format!("{} ", file.created_at.format("%d/%m/%Y %H:%M"))).to_string()),
-            Cell::new(&Yellow.paint(&format!("{} ", file.creator.name().to_str().unwrap())).to_string()),
-            Cell::new(&set_print_color(file))
-        ];
-        table.add_row(Row::new(cells));
-    } 
-    table.printstd();
+        let len_user = file.creator.name().to_str().unwrap().len();
+        let espaco_tam = " ".repeat(4-put_sufix_in_number(file.size).len());
+        let espaco_user = " ".repeat(maior_len_user-len_user);
+
+        println!(
+            "{:width$} {}{} {} {}{} {}", 
+            set_perm_color(file.get_perm()),
+            Green.paint(put_sufix_in_number(file.size)),
+            espaco_tam,
+            Purple.paint(&format!("{} ", file.created_at.format("%d/%m/%Y %H:%M"))),
+            Yellow.paint(&format!("{} ", file.creator.name().to_str().unwrap())),
+            espaco_user,
+            set_print_color(file),
+            width = 11,
+        );
+   } 
+}
+
+fn get_maior_len_name_user(files: &[File]) -> usize {
+    let mut maior_len = 0;
+    let mut _len_user = 0;
+
+    for item in files {
+        _len_user = item.creator.name().to_str().unwrap().len();
+
+        if _len_user > maior_len {
+            maior_len = _len_user;
+        }
+    }
+
+    maior_len
 }
 
 fn put_sufix_in_number(number: u64) -> String {
